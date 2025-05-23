@@ -55,8 +55,10 @@ def loadWords():
     with open("substrings.txt", "r", encoding="utf-8") as file:
         substrings = [line.strip() for line in file if line.strip()]
     return
-   
+
+loadWords()
+
 if __name__ == "__main__":
     loadWords()
-    app.run(debug=True)
+    app.run(debug=False, threaded=True)
 

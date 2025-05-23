@@ -3,7 +3,12 @@ import websockets
 import asyncio
 import random
 from websockets import serve
+import requests
+import time
+import http.client
+import httpx
 
+urlSubstring = "http://localhost:5000/api/v1/substring"
 """
     Listas:
         - Lista de sockets = [websocket1 , websocket2,... ]
@@ -14,6 +19,7 @@ from websockets import serve
 
 # Conexión a Redis
 redis_conn = redis.Redis(host='localhost', port=6379, db=0)
+
 listaSockets = []
 listaJugadores = {}
 listaVivos = set()
@@ -23,24 +29,7 @@ currentPlayer = None
 currentWord = None
 gameStarted = False
 indiceJugadorActual = 0
-wordsList = [
-    "gato",
-    "mesa",
-    "ventana",
-    "casa",
-    "libro",
-    "coche",
-    "perro",
-    "playa",
-    "luna",
-    "flor",
-    "sol",
-    "puerta",
-    "camino",
-    "estrella",
-    "nube"
-]
-
+client = httpx.AsyncClient()
 #Handler para manejar mensajes desde los clientes
 async def handler(websocket):
     global listaSockets, listaVivos, listaMuertos, listaNombres, listaJugadores
@@ -125,7 +114,8 @@ async def startRound():
 async def nextPlayer():
     global currentPlayer,indiceJugadorActual,currentWord
     currentPlayer, indiceJugadorActual = await selectNextAlivePlayer()
-    currentWord = wordsList.pop()
+    response = requests.get(urlSubstring)
+    currentWord = response.json()["substring"][0]
     # Guardar en redis
     redis_conn.set("currentWord", currentWord)
     redis_conn.set("currentPlayer", currentPlayer)
@@ -148,10 +138,18 @@ async def countdown(segundos):
         await asyncio.sleep(1)
 
 async def main():
+    for _ in range(10):
+        result = await fetch_substring()
     async with serve(handler , "localhost" , 9000) as server:
         await server.serve_forever()
+    await client.aclose()
 
+async def fetch_substring():
+    global client
+    response = await client.get(urlSubstring)
+    return response.json()["substring"][0]
 
 if __name__ == "__main__":
     asyncio.run(main())
+    
     #asyncio.run(countdown(60))
