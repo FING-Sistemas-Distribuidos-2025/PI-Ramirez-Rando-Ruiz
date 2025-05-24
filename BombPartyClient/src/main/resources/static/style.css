@@ -15,6 +15,24 @@ h1 {
   margin-bottom: 30px;
 }
 
+.startTitle {
+  font-size: 3rem;
+  margin-bottom: 10px;
+}
+
+@keyframes bomb-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.logo-bomb {
+  width: 75px;
+  height: auto;
+  animation: bomb-pulse 2s infinite;
+}
+
+
 .word {
   font-size: 2.5rem;
   background-color: #333;
@@ -29,9 +47,17 @@ h1 {
   align-items: center;
 }
 
-input[type="text"] {
+.input-word {
   font-size: 1.5rem;
   padding: 10px;
+  border-radius: 5px;
+  border: none;
+  text-align: center;
+}
+
+.input-id {
+  font-size: 1rem;
+  padding: 8px;
   border-radius: 5px;
   border: none;
   text-align: center;
