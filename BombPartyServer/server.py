@@ -1,133 +1,126 @@
-import redis
+import uuid
+import redis.asyncio as redis
 import websockets
 import asyncio
 import random
 from websockets import serve
-import requests
-import time
-import http.client
+import json
+from game import Game
 import httpx
 
 urlSubstring = "http://localhost:5000/api/v1/substring"
-"""
-    Listas:
-        - Lista de sockets = [websocket1 , websocket2,... ]
-    Diccionarios:
-        - Diccionario de jugadores = {"nombreJugador" : "estado"}
-        - Diccionario de nombres = {"websocket" : "nombreJugador"}
-"""
+urlValidation = "http://localhost:5000/api/v1/validate"
 
 # Conexión a Redis
 redis_conn = redis.Redis(host='localhost', port=6379, db=0)
 
-listaSockets = []
-listaJugadores = {}
-listaVivos = set()
-listaMuertos = set()
-listaNombres = {}
-currentPlayer = None
-currentWord = None
-gameStarted = False
-indiceJugadorActual = 0
 client = httpx.AsyncClient()
+gameList = {}
 #Handler para manejar mensajes desde los clientes
 async def handler(websocket):
     global listaSockets, listaVivos, listaMuertos, listaNombres, listaJugadores
     #Verificamos si el jugador esta agregado en la lista de jugadores
     try:  
         async for message in websocket:
-            # Si hay una nueva conexión que no se encuentra en la lista de jugadores
-            # la agregamos a la lista y le designamos un nombre
-            if websocket not in listaJugadores:
-                jugador = message
-                listaSockets.append(websocket)
-                listaNombres[websocket] = jugador
-                # Si el juego empezó, estará en estado de espera
-                if (gameStarted):
-                    listaJugadores[jugador] = "espera"
-                    listaMuertos.add(jugador)
-                # Si el juego aún no empieza, se lo pone en estado activo,
-                # cuando el juego empiece, será parte de este
-                else:
-                    listaJugadores[jugador] = "activo"
-                    listaVivos.add(jugador)
-                # El juego no comienza hasta que hayan como mínimo 2 jugadores
-                if len(listaSockets) == 2 and not gameStarted:
-                    await game()
-            # Si la conexión ya existe, y es del jugador actual, se compara
-            # la palabra, si es correcta, le toca al siguiente jugador
-            else: 
-                if (listaNombres[websocket] == currentPlayer):
-                    if message == currentWord:
-                        await nextPlayer()
-            await websocket.send("OK")  
+            print(message)
+            message = json.loads(message)
+            action = message["action"]
+            name = message["name"]
+            if (action == "create"):
+                roomid = uuid.uuid4().hex[:4]
+                game = Game(roomid)
+                game.listaVivos.add(name)
+                game.listaNombres.append(name)
+                game.players[name] = "activo"
+                gameList[roomid] = (game)
+                response = {"id": message["messageid"], "status": "OK", "message": "Created"}
+            elif (action == "join"):
+                roomid = message["roomId"]
+                if roomid in gameList:
+                    game = gameList[roomid]
+                    if (game.started == False):
+                        if name not in game.listaVivos:
+                            game.listaVivos.add(name)
+                            game.listaNombres.append(name)
+                            if (len(game.listaVivos) == 2 and game.starting == False):
+                                game.starting = True
+                                asyncio.create_task(startGame(game))
+                            response = {"id": message["messageid"], "status": "OK", "message": "Joined"}
+                        else:
+                            response = {"id": message["messageid"], "status": "NOTOK", "message": "Name already used"}
+                    else:
+                        response = {"id": message["messageid"], "status": "NOTOK", "message": "Game already started"}
+            elif (action == "answer") :
+                word = message["word"]
+                roomid = message["roomId"]
+                game = gameList[roomid]
+                if game.currentSubstring in word:
+                    condition = await validateWord(word)
+                    if condition:
+                        response = {"id": message["messageid"], "status": "OK", "message": "Correct"}
+                        await nextPlayer(game)
+                    else:
+                        response = {"id": message["messageid"], "status": "NOTOK", "message": "Incorrect"}
+            else:
+                response = {"id": message["messageid"], "status": "NOTOK", "message": "Bad action"}
+            await websocket.send(json.dumps(response))
+
     #Si se cierra la conexión, se elimina al jugador de las listas
     except websockets.exceptions.ConnectionClosed:
-        listaSockets.remove(websocket)
-        listaJugadores.pop(listaNombres[websocket])
-        listaNombres.pop(websocket)
-        listaMuertos.discard(listaNombres[websocket])
-        listaVivos.discard(listaNombres[websocket])
+        pass
     finally:
         pass
     
 #Función principal del juego
-async def game():
-    global gameStarted
+async def startGame(game):
     # Mientras la cantidad de jugadores sea mayor o igual a 2,
     # el juego empezado continuará ejecutándose
-    while (len(listaJugadores) >= 2):
+    while (len(game.listaVivos) >= 2):
         # Tiempo para que se unan mas de 2 jugadores
         await countdown(60)
-        gameStarted = True
-        redis_conn.hset("playerList", mapping=listaJugadores)
+        game.started = True
+        publishRedis(game)
 
-        await startRound()
+        await startRound(game)
         
 #Función para manejar cada ronda
-async def startRound():
-    global listaJugadores, gameStarted, listaMuertos, listaVivos
+async def startRound(game):
     # Tiempo que dura la ronda antes de que explote la bomba
     time = random.randint(20, 45)
     await nextPlayer()
     # Empieza el temporizador de la "bomba"
     await countdown(time)
-    while gameStarted:
-        listaJugadores[listaNombres[listaSockets[indiceJugadorActual]]] = "muerto"
-        listaVivos.discard(currentPlayer)
-        listaMuertos.add(currentPlayer)
+    while game.started:
+        game.players[game.currentPlayer] = "muerto"
+        game.listaVivos.discard(game.currentPlayer)
+        game.listaMuertos.add(game.currentPlayer)
         # Guardar lista de jugadores en redis
-        redis_conn.hset("playerList", mapping=listaJugadores)
+        publishRedis(game)
 
         # Si queda un jugador, gana
-        if (len(listaVivos) == 1):
-            redis_conn.hset("ganador", listaVivos.pop())
-            gameStarted = False
-            listaVivos = listaVivos | listaMuertos
-            listaMuertos.clear()
-            for jugador in listaJugadores:
-                listaJugadores[jugador] = "activo"
+        if (len(game.listaVivos) == 1):
+            publishRedis(game)
+            game.started = False
+            game.listaVivos = game.listaVivos | game.listaMuertos
+            game.listaMuertos.clear()
+            for jugador in game.players:
+                game.players[jugador] = "activo"
     return
 
 # Se selecciona al siguiente jugador dentro de la partida,
 # este se seleccionará dentro de la lista de jugadores vivos
-async def nextPlayer():
-    global currentPlayer,indiceJugadorActual,currentWord
-    currentPlayer, indiceJugadorActual = await selectNextAlivePlayer()
-    response = requests.get(urlSubstring)
-    currentWord = response.json()["substring"][0]
+async def nextPlayer(game):
+    game.currentPlayer, game.indiceJugadorActual = await selectNextAlivePlayer(game)
+    game.currentSubstring = await fetch_substring()
     # Guardar en redis
-    redis_conn.set("currentWord", currentWord)
-    redis_conn.set("currentPlayer", currentPlayer)
+    publishRedis(game)
 
-async def selectNextAlivePlayer():
-    global indiceJugadorActual
-
-    total = len(listaSockets)
+async def selectNextAlivePlayer(game):
+    total = len(game.players)
     for i in range(1, total + 1):
-        idx = (indiceJugadorActual + i) % total
-        nombre = listaNombres[listaSockets[idx]]
-        if nombre in listaVivos:
+        idx = (game.indiceJugadorActual + i) % total
+        nombre = game.listaNombres[idx]
+        if nombre in game.listaVivos:
             return nombre, idx
 
     return None, -1  # No hay jugadores vivos
@@ -138,8 +131,12 @@ async def countdown(segundos):
         await asyncio.sleep(1)
 
 async def main():
-    for _ in range(10):
-        result = await fetch_substring()
+    game = Game("123")
+    game.players["asd"] = "vivo"
+    game.currentSubstring = "ad"
+    game.currentPlayer = "asd"
+    await publishRedis(game)
+    print("iniciando")
     async with serve(handler , "localhost" , 9000) as server:
         await server.serve_forever()
     await client.aclose()
@@ -148,6 +145,19 @@ async def fetch_substring():
     global client
     response = await client.get(urlSubstring)
     return response.json()["substring"][0]
+
+async def publishRedis(game):
+    global redis_conn
+    data = {"players" : game.players, "winner" : game.winner, "word" : game.currentSubstring, "currentPlayer" : game.currentPlayer}
+    await redis_conn.publish(game.channel, json.dumps(data))
+
+async def validateWord(word):
+    global client
+    data = {
+        "word": word
+    }
+    response = await client.post(urlValidation, json=data)
+    return response.json()["message"][0]
 
 if __name__ == "__main__":
     asyncio.run(main())
