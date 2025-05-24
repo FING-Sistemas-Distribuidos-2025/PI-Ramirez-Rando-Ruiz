@@ -12,7 +12,6 @@ import com.sistemasdistribuidos.BombParty.services.SocketService;
 @Controller
 public class Game {
     private String viewStart = "start";
-    private String viewGame = "ui";
     private String viewRoom = "room";
 
     @Autowired
@@ -34,7 +33,7 @@ public class Game {
         } catch (GameException ex) {
             return "error?type=create";
         }
-        return "redirect:/room?id=" + roomId;
+        return "redirect:/room?id=" + roomId + "&name=" + name;
     }
 
     @GetMapping("/join")
@@ -56,22 +55,19 @@ public class Game {
             }
             
         }
-        return "redirect:/room?id=" + roomid;
-    }
-
-    @GetMapping("/game")
-    public String game(@RequestParam(value = "id") String id, Model model) {
-        if (id == null) {
-            return "error?type=idnulo";
-        } else {
-
-        }
-        return viewGame;
+        return "redirect:/room?id=" + roomid + "&name=" + name;
     }
 
     @GetMapping("/room")
-    public String room(@RequestParam(value = "id") String roomid, Model model) {
+    public String room(@RequestParam(value = "id") String roomid, @RequestParam(value = "name") String name, Model model) {
         model.addAttribute("roomid", roomid);
+        model.addAttribute("name", name);
         return viewRoom;
+    }
+
+    @GetMapping("/answer")
+    public String rightAnswer(@RequestParam(value = "respuesta") String answer) {
+        System.out.println(answer);
+        return "fragments/right :: rightAnswer";
     }
 }

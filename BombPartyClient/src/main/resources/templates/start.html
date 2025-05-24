@@ -11,6 +11,7 @@
     <h1 class="startTitle">Party Bomb</h1>
     <span><img class="logo-bomb" src="imgs/bomb.png"></span>
     <form th:action="@{/create}" method="get">
+      <input type="text" class="input-id" id="input-name3" name="name" th:value="${name}" hidden autocomplete="off" />
       <button type="submit" class="btn btn-light mb-3 mt-4">Crear Sala</button>
     </form>
     <span class="mb-1"> O puedes unirte a una ya existente</span>

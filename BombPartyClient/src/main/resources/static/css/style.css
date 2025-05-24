@@ -75,3 +75,68 @@ h1 {
 .wrong {
   color: #f44336;
 }
+
+.player-card {
+      background-color: #333;
+      border: 1px solid #555;
+      color: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.player-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.alive {
+  border-left: 5px solid #4caf50;
+}
+
+.dead {
+  border-left: 5px solid #f44336;
+  opacity: 0.6;
+}
+
+.word-display {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-top: 20px;
+}
+
+.game-header {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.turn-info {
+  margin-top: 20px;
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.your-turn {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.not-your-turn {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}

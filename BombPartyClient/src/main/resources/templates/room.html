@@ -5,72 +5,6 @@
   <title>Partida - Party Bomb</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
-  <style>
-    .player-card {
-      background-color: #333;
-      border: 1px solid #555;
-      color: white;
-      border-radius: 10px;
-      padding: 15px;
-      margin: 10px 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .player-info {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    .player-icon {
-      width: 30px;
-      height: 30px;
-    }
-
-    .alive {
-      border-left: 5px solid #4caf50;
-    }
-
-    .dead {
-      border-left: 5px solid #f44336;
-      opacity: 0.6;
-    }
-
-    .word-display {
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin-top: 20px;
-    }
-
-    .game-header {
-      margin-top: 20px;
-      margin-bottom: 10px;
-    }
-
-    .turn-info {
-      margin-top: 20px;
-      font-size: 1.3rem;
-      font-weight: bold;
-    }
-
-    .your-turn {
-      background-color: #d4edda;
-      color: #155724;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-    }
-
-    .not-your-turn {
-      background-color: #fff3cd;
-      color: #856404;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-    }
-  </style>
 </head>
 <body>
   <div class="container text-center">
@@ -82,7 +16,7 @@
     <!-- TURNO -->
     <div class="turn-info">
       <!-- Si es tu turno -->
-      <div class="your-turn">✅ ¡Es tu turno, Juan!</div>
+      <div class="your-turn">✅ ¡Es tu turno, <span id="currentPlayer"> </span>!</div>
 
       <!-- Si NO es tu turno, descomenta y comenta el de arriba -->
       <!-- <div class="not-your-turn">🕒 Turno de Ana</div> -->
@@ -90,11 +24,13 @@
 
     <!-- PALABRA -->
     <div class="word-display">
-      ✳️ Palabra: <span class="text-primary">Computadora</span>
+      ✳️ Palabra: <span id="currentSubstring" class="text-primary">Computadora</span>
     </div>
 
+    <div id="answer"></div>
+    
     <!-- INPUT DE RESPUESTA -->
-    <form class="mt-3 mb-4 d-flex justify-content-center" action="#" method="post">
+    <form id="sendWord" class="mt-3 mb-4 d-flex justify-content-center" action="#" method="get">
       <input type="text" class="form-control w-50 me-2" name="respuesta" placeholder="Escribe tu palabra..." autocomplete="off" />
       <button type="submit" class="btn btn-success">Enviar</button>
     </form>
@@ -102,36 +38,16 @@
     <!-- LISTA DE JUGADORES -->
     <h2 class="mt-4">Jugadores</h2>
     <div class="row justify-content-center">
-      <div class="col-md-6">
-
-        <div class="player-card alive">
-          <div class="player-info">
-            <img src="/imgs/face-smile-svgrepo-com.svg" alt="Vivo" class="player-icon">
-            <span>Juan</span>
-          </div>
-          <span class="text-success">Vivo</span>
-        </div>
-
-        <div class="player-card dead">
-          <div class="player-info">
-            <img src="/imgs/face-dead-svgrepo-com.svg" alt="Muerto" class="player-icon">
-            <span>Ana</span>
-          </div>
-          <span class="text-danger">Muerta</span>
-        </div>
-
-        <div class="player-card alive">
-          <div class="player-info">
-            <img src="/imgs/face-smile-svgrepo-com.svg" alt="Vivo" class="player-icon">
-            <span>Luis</span>
-          </div>
-          <span class="text-success">Vivo</span>
-        </div>
-
+      <div class="col-md-6" id="players">
       </div>
     </div>
 
+
+
     <a href="/" class="btn btn-secondary mt-4">Salir</a>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <script th:src="@{/js/script.js}"></script>
 </body>
 </html>

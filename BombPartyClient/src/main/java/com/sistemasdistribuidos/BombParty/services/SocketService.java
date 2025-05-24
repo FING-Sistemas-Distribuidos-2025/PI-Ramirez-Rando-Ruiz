@@ -54,9 +54,8 @@ public class SocketService {
                 json = new JSONObject(rta);
                 client.removePending(id);
                 System.out.println(json.getString("status"));
-                
-                if (json.getString("status") == "OK") {
-                    
+                if (json.getString("status").equals("OK")) {
+                    System.out.println("Room created" + json.getString("roomid"));
                     return json.getString("roomid");
                 }
             } catch (TimeoutException e) {
@@ -79,7 +78,7 @@ public class SocketService {
             JSONObject json = new JSONObject();
             json.put("messageid", id);
             json.put("action", "join");
-            json.put("roomid", roomId);
+            json.put("roomId", roomId);
             json.put("name", name);
             String jsonString = json.toString();
 
@@ -91,7 +90,7 @@ public class SocketService {
                 client.removePending(id);
                 System.out.println(json.getString("status"));
                 
-                if (json.getString("status") == "OK") {
+                if (json.getString("status").equals("OK")) {
                     return true;
                 }
             } catch (TimeoutException e) {

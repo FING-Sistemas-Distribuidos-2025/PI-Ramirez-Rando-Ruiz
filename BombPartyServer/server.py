@@ -32,8 +32,8 @@ async def handler(websocket):
                 game.listaVivos.add(name)
                 game.listaNombres.append(name)
                 game.players[name] = "activo"
-                gameList[roomid] = (game)
-                response = {"id": message["messageid"], "status": "OK", "message": "Created"}
+                gameList[roomid] = game
+                response = {"id": message["messageid"], "status": "OK", "message": "Created", "roomid" : roomid}
             elif (action == "join"):
                 roomid = message["roomId"]
                 if roomid in gameList:
@@ -41,6 +41,7 @@ async def handler(websocket):
                     if (game.started == False):
                         if name not in game.listaVivos:
                             game.listaVivos.add(name)
+                            game.players[name] = "activo"
                             game.listaNombres.append(name)
                             if (len(game.listaVivos) == 2 and game.starting == False):
                                 game.starting = True
@@ -64,42 +65,50 @@ async def handler(websocket):
             else:
                 response = {"id": message["messageid"], "status": "NOTOK", "message": "Bad action"}
             await websocket.send(json.dumps(response))
-
+            if (action == "join" or action == "create"):
+                asyncio.create_task(publishOnRedisWithTimer(0.5, game))
+                asyncio.create_task(publishOnRedisWithTimer(5, game))
     #Si se cierra la conexión, se elimina al jugador de las listas
     except websockets.exceptions.ConnectionClosed:
         pass
     finally:
         pass
-    
+
+async def publishOnRedisWithTimer(seconds, game):
+    await asyncio.sleep(seconds)
+    await publishRedis(game)
+
 #Función principal del juego
 async def startGame(game):
     # Mientras la cantidad de jugadores sea mayor o igual a 2,
     # el juego empezado continuará ejecutándose
     while (len(game.listaVivos) >= 2):
         # Tiempo para que se unan mas de 2 jugadores
-        await countdown(60)
+        await countdown(20)
         game.started = True
-        publishRedis(game)
+        await publishRedis(game)
 
         await startRound(game)
         
 #Función para manejar cada ronda
 async def startRound(game):
     # Tiempo que dura la ronda antes de que explote la bomba
-    time = random.randint(20, 45)
-    await nextPlayer()
-    # Empieza el temporizador de la "bomba"
-    await countdown(time)
+    
     while game.started:
+        time = random.randint(20, 45)
+        await nextPlayer(game)
+        # Empieza el temporizador de la "bomba"
+        await countdown(time)
         game.players[game.currentPlayer] = "muerto"
         game.listaVivos.discard(game.currentPlayer)
         game.listaMuertos.add(game.currentPlayer)
         # Guardar lista de jugadores en redis
-        publishRedis(game)
+        await publishRedis(game)
 
         # Si queda un jugador, gana
         if (len(game.listaVivos) == 1):
-            publishRedis(game)
+            game.winner = game.listaVivos.pop()
+            await publishRedis(game)
             game.started = False
             game.listaVivos = game.listaVivos | game.listaMuertos
             game.listaMuertos.clear()
@@ -113,7 +122,7 @@ async def nextPlayer(game):
     game.currentPlayer, game.indiceJugadorActual = await selectNextAlivePlayer(game)
     game.currentSubstring = await fetch_substring()
     # Guardar en redis
-    publishRedis(game)
+    await publishRedis(game)
 
 async def selectNextAlivePlayer(game):
     total = len(game.players)

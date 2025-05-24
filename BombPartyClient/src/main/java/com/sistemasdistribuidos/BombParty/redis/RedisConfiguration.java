@@ -24,7 +24,6 @@ public class RedisConfiguration {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
 
-        // Escucha todos los canales tipo "room:*"
         container.addMessageListener(listenerAdapter, new PatternTopic("room:*"));
 
         return container;
