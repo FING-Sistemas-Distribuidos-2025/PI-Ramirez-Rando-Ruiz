@@ -63,19 +63,32 @@ stompClient.connect({}, function (frame) {
     });
 });
 
+let timeoutid;
 document.getElementById("sendWord").addEventListener("submit", function(e) {
         e.preventDefault(); 
 
         const formData = new FormData(this);
         const respuesta = formData.get("respuesta");
+        if (document.getElementById("currentPlayer").innerText === userName) {
+            fetch(`/answer?respuesta=${encodeURIComponent(respuesta)}&name=${encodeURIComponent(userName)}&roomid=${encodeURIComponent(roomId)}`)
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById("answer").innerHTML = html;
+            })
+            .catch(error => console.error('Error:', error));
 
-        fetch(`/answer?respuesta=${encodeURIComponent(respuesta)}`)
-        .then(response => response.text())
-        .then(html => {
-            document.getElementById("answer").innerHTML = html;
-        })
-        .catch(error => console.error('Error:', error));
+            if (timeoutid) {
+                clearTimeout(timeoutid);
+            }
+            timeoutid = setTimeout(() => {
+                document.getElementById('answer').innerHTML = '';
+                timeoutid = null;
+            }, 5000)
+        }
+        
 });
+
+
 
 function cargarRespuestaCorrecta() {
     if (document.getElementById("currentPlayer").innerText === userName) {
@@ -84,5 +97,6 @@ function cargarRespuestaCorrecta() {
             .then(html => {
                 document.getElementById('answer').innerHTML = html;
             });
+        
     }
 }

@@ -103,4 +103,40 @@ public class SocketService {
         }
         return false;
     }
+
+    public boolean answer(String name, String roomId, String word) throws GameException {
+        if (client != null && client.isOpen()) {
+            String id = UUID.randomUUID().toString();
+            CompletableFuture<String> future = new CompletableFuture<>();
+            client.insertOnPending(id, future);
+            JSONObject json = new JSONObject();
+            json.put("messageid", id);
+            json.put("action", "answer");
+            json.put("roomId", roomId);
+            json.put("name", name);
+            json.put("word", word);
+            String jsonString = json.toString();
+
+            client.send(jsonString);
+
+            try {
+                String rta = future.get(5, TimeUnit.SECONDS);
+                json = new JSONObject(rta);
+                client.removePending(id);
+                if (json.getString("status").equals("OK")) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } catch (TimeoutException e) {
+                client.removePending(id);
+                throw new GameException("Timeout esperando respuesta");
+            } catch (Exception e) {
+                client.removePending(id);
+                throw new GameException("Error esperando respuesta");
+            }
+        } else {
+            throw new GameException("Conexión con el servidor perdida.");
+        }
+    }
 }

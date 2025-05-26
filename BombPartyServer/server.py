@@ -9,7 +9,7 @@ from game import Game
 import httpx
 
 urlSubstring = "http://localhost:5000/api/v1/substring"
-urlValidation = "http://localhost:5000/api/v1/validate"
+urlValidation = "http://localhost:5000/api/v1/word/validate"
 
 # Conexión a Redis
 redis_conn = redis.Redis(host='localhost', port=6379, db=0)
@@ -55,13 +55,18 @@ async def handler(websocket):
                 word = message["word"]
                 roomid = message["roomId"]
                 game = gameList[roomid]
-                if game.currentSubstring in word:
-                    condition = await validateWord(word)
+                if (name == game.currentPlayer):
+                    if game.currentSubstring in word:
+                        condition = await validateWord(word)
+                    else:
+                        condition = False
                     if condition:
                         response = {"id": message["messageid"], "status": "OK", "message": "Correct"}
                         await nextPlayer(game)
                     else:
                         response = {"id": message["messageid"], "status": "NOTOK", "message": "Incorrect"}
+                else:
+                    response = {"id": message["messageid"], "status": "NOTOK", "message": "Not current player"}
             else:
                 response = {"id": message["messageid"], "status": "NOTOK", "message": "Bad action"}
             await websocket.send(json.dumps(response))
@@ -82,12 +87,12 @@ async def publishOnRedisWithTimer(seconds, game):
 async def startGame(game):
     # Mientras la cantidad de jugadores sea mayor o igual a 2,
     # el juego empezado continuará ejecutándose
-    while (len(game.listaVivos) >= 2):
+    while (len(game.players) >= 2):
         # Tiempo para que se unan mas de 2 jugadores
         await countdown(20)
         game.started = True
         await publishRedis(game)
-
+        
         await startRound(game)
         
 #Función para manejar cada ronda
@@ -95,11 +100,12 @@ async def startRound(game):
     # Tiempo que dura la ronda antes de que explote la bomba
     
     while game.started:
-        time = random.randint(20, 45)
+        time = random.randint(40, 60)
         await nextPlayer(game)
         # Empieza el temporizador de la "bomba"
         await countdown(time)
         game.players[game.currentPlayer] = "muerto"
+        
         game.listaVivos.discard(game.currentPlayer)
         game.listaMuertos.add(game.currentPlayer)
         # Guardar lista de jugadores en redis
@@ -108,10 +114,13 @@ async def startRound(game):
         # Si queda un jugador, gana
         if (len(game.listaVivos) == 1):
             game.winner = game.listaVivos.pop()
+            game.listaVivos.add(game.winner)
             await publishRedis(game)
             game.started = False
             game.listaVivos = game.listaVivos | game.listaMuertos
+            game.indiceJugadorActual = 0
             game.listaMuertos.clear()
+            game.winner = None
             for jugador in game.players:
                 game.players[jugador] = "activo"
     return
@@ -140,12 +149,7 @@ async def countdown(segundos):
         await asyncio.sleep(1)
 
 async def main():
-    game = Game("123")
-    game.players["asd"] = "vivo"
-    game.currentSubstring = "ad"
-    game.currentPlayer = "asd"
-    await publishRedis(game)
-    print("iniciando")
+    print("Iniciando")
     async with serve(handler , "localhost" , 9000) as server:
         await server.serve_forever()
     await client.aclose()
@@ -166,7 +170,7 @@ async def validateWord(word):
         "word": word
     }
     response = await client.post(urlValidation, json=data)
-    return response.json()["message"][0]
+    return response.json()["message"]
 
 if __name__ == "__main__":
     asyncio.run(main())

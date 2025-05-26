@@ -66,8 +66,15 @@ public class Game {
     }
 
     @GetMapping("/answer")
-    public String rightAnswer(@RequestParam(value = "respuesta") String answer) {
-        System.out.println(answer);
-        return "fragments/right :: rightAnswer";
+    public String rightAnswer(@RequestParam(value = "respuesta") String answer, @RequestParam(value = "name") String name, @RequestParam(value = "roomid") String roomId) {
+        try {
+            if (socketservice.answer(name, roomId, answer)) {
+                return "fragments/right :: rightAnswer";
+            } else {
+                return "fragments/right :: wrongAnswer";
+            }
+        } catch (GameException ex) {
+            return "fragments/right :: error";
+        }
     }
 }
