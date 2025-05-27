@@ -55,7 +55,7 @@ public class SocketService {
                 client.removePending(id);
                 System.out.println(json.getString("status"));
                 if (json.getString("status").equals("OK")) {
-                    System.out.println("Room created" + json.getString("roomid"));
+                    System.out.println("Room created: " + json.getString("roomid"));
                     return json.getString("roomid");
                 }
             } catch (TimeoutException e) {
@@ -138,5 +138,36 @@ public class SocketService {
         } else {
             throw new GameException("Conexión con el servidor perdida.");
         }
+    }
+
+    public void desconectar(String name , String roomId) throws GameException{
+
+        String id = UUID.randomUUID().toString();
+        CompletableFuture<String> future = new CompletableFuture<>();
+        client.insertOnPending(id, future);
+        JSONObject json = new JSONObject();
+        json.put("messageid", id);
+        json.put("action", "disconnection");
+        json.put("roomId", roomId);
+        json.put("name", name);
+        json.put("word", "");
+        String jsonString = json.toString();
+        client.send(jsonString);
+
+        try {
+            String rta = future.get(5, TimeUnit.SECONDS);
+            json = new JSONObject(rta);
+            client.removePending(id);
+            if (json.getString("status").equals("OK")) {
+                System.out.println("Usuario desconectado correctamente de la sala" + roomId);
+            }
+        } catch (TimeoutException e) {
+            client.removePending(id);
+            throw new GameException("Timeout esperando respuesta");
+        } catch (Exception e) {
+            client.removePending(id);
+            throw new GameException("Error esperando respuesta");
+        }
+
     }
 }

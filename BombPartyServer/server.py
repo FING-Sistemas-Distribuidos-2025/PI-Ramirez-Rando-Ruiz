@@ -22,7 +22,7 @@ async def handler(websocket):
     #Verificamos si el jugador esta agregado en la lista de jugadores
     try:  
         async for message in websocket:
-            print(message)
+            print(f"Mensaje del cliente: {message}")
             message = json.loads(message)
             action = message["action"]
             name = message["name"]
@@ -67,8 +67,18 @@ async def handler(websocket):
                         response = {"id": message["messageid"], "status": "NOTOK", "message": "Incorrect"}
                 else:
                     response = {"id": message["messageid"], "status": "NOTOK", "message": "Not current player"}
+            
+            elif (action == "disconnection"):
+                roomid = message["roomId"]
+                game = gameList[roomid]
+                game.listaNombres.remove(name)
+                game.listaVivos.remove(name)
+                game.players.pop(name,None)
+                response = {"id": message["messageid"], "status": "OK", "message": "Disconnection", "roomid" : roomid}
             else:
                 response = {"id": message["messageid"], "status": "NOTOK", "message": "Bad action"}
+
+            print(f"Respuesta del servidor: {response}")
             await websocket.send(json.dumps(response))
             if (action == "join" or action == "create"):
                 asyncio.create_task(publishOnRedisWithTimer(0.5, game))

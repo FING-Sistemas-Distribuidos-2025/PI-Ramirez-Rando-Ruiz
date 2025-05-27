@@ -16,7 +16,7 @@
     <!-- TURNO -->
     <div class="turn-info">
       <!-- Si es tu turno -->
-      <div class="your-turn">✅ ¡Es tu turno, <span id="currentPlayer"> </span>!</div>
+      <div id="turnMessage" class="your-turn">✅ ¡Es tu turno, <span id="currentPlayer"> </span>!</div>
 
       <!-- Si NO es tu turno, descomenta y comenta el de arriba -->
       <!-- <div class="not-your-turn">🕒 Turno de Ana</div> -->
@@ -34,6 +34,9 @@
       <input type="text" class="form-control w-50 me-2" name="respuesta" placeholder="Escribe tu palabra..." autocomplete="off" />
       <button type="submit" class="btn btn-success">Enviar</button>
     </form>
+
+    <!-- GANADOR -->
+    <div id="winnerMessage" class="alert alert-success fw-bold" style="display: none;"></div>
 
     <!-- LISTA DE JUGADORES -->
     <h2 class="mt-4">Jugadores</h2>

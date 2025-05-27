@@ -4,7 +4,7 @@ const userName = params.get("name");
 const socket = new SockJS('/ws');
 const stompClient = Stomp.over(socket);
 
-stompClient.connect({}, function (frame) {
+stompClient.connect({ username: userName, roomid: roomId }, function (frame) {
 
     stompClient.subscribe("/topic/room/" + roomId, function (message) {
         const data = JSON.parse(message.body);
@@ -14,6 +14,8 @@ stompClient.connect({}, function (frame) {
 
         const lista = document.getElementById("players");
         lista.innerHTML = "";
+
+        let userState = null;
 
         Object.entries(data.players).forEach(([jugador, estado]) => {
             const card = document.createElement("div");
@@ -52,12 +54,45 @@ stompClient.connect({}, function (frame) {
             card.appendChild(estadoSpan);
 
             lista.appendChild(card);
+
+            if (jugador === userName) {
+                userState = estado;
+    }
         });
 
-        if (data.currentPlayer !== userName) {
-            document.getElementById("sendWord").hidden = true;
+        const sendForm = document.getElementById("sendWord");
+        const input = sendForm.querySelector('input[name="respuesta"]');
+        const button = sendForm.querySelector('button[type="submit"]');
+
+        const isUserTurn = data.currentPlayer === userName;
+        const isUserAlive = userState === "activo";
+
+        // Deshabilito el input y el enviar si no es el turno del jugador
+        sendForm.hidden = !(isUserTurn && isUserAlive);
+        input.disabled = !(isUserTurn && isUserAlive);
+        button.disabled = !(isUserTurn && isUserAlive);
+
+        if (isUserTurn && isUserAlive) {
+            input.value = ""; // Limpiar campo de entrada
+            input.focus();
+        }
+
+        const winnerMessage = document.getElementById("winnerMessage");
+        const turnMessage = document.getElementById("turnMessage");
+
+
+        if (data.winner) {
+            turnMessage.style.display = "none";
+            winnerMessage.innerText = `🎉 ¡${data.winner} ha ganado la partida!`;
+            winnerMessage.style.display = "block";
+
+            sendForm.hidden = true;
+            input.disabled = true;
+            button.disabled = true;
+            input.value = "";
         } else {
-            document.getElementById("sendWord").hidden = false;
+            winnerMessage.style.display = "none"; // Ocultar si aún no hay ganador
+            turnMessage.style.display = "block"; 
         }
 
     });
