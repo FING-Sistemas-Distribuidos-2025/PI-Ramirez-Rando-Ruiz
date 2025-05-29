@@ -18,6 +18,10 @@ public class Start {
 
     @GetMapping("/start")
     public String start(@RequestParam (value = "name") String name, Model model) {
+        if (name.isEmpty()) {
+            model.addAttribute("error", "Debe ingresar su nombre de usuario.");
+            return viewName;
+        }
         model.addAttribute("name", name);
         return viewStart;
     }

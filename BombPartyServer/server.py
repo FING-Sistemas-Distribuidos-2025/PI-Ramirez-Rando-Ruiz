@@ -51,6 +51,8 @@ async def handler(websocket):
                             response = {"id": message["messageid"], "status": "NOTOK", "message": "Name already used"}
                     else:
                         response = {"id": message["messageid"], "status": "NOTOK", "message": "Game already started"}
+                else:
+                    response = {"id": message["messageid"], "status": "NOTOK", "message": "Invalid room id"}
             elif (action == "answer") :
                 word = message["word"]
                 roomid = message["roomId"]

@@ -17,6 +17,11 @@
     <span class="mb-1"> O puedes unirte a una ya existente</span>
     <div class="input-container text-center">
       <form th:action="@{/join}" method="get">
+
+          <div th:if="${error}" class="alert alert-danger mt-2" role="alert">
+            <span th:text="${error}"></span>
+          </div>
+          
           <div>
             <input type="text" class="input-id" id="input-id" name="id" placeholder="Escribe el ID de la sala" autocomplete="off" />
             <input type="text" class="input-id" id="input-name2" name="name" th:value="${name}" hidden autocomplete="off" />

@@ -13,6 +13,7 @@ import com.sistemasdistribuidos.BombParty.services.SocketService;
 public class Game {
     private String viewStart = "start";
     private String viewRoom = "room";
+    private String viewName = "name";
 
     @Autowired
     private SocketService socketservice;
@@ -21,17 +22,18 @@ public class Game {
     public String create(@RequestParam(value = "name") String name, Model model) {
 
         String roomId = null;          
-        if (name == null) {
-            return "error?type=nombrevacio";
+        if (name.isEmpty() || name.isEmpty()) {
+            model.addAttribute("error", "Error al cargar el nombre de usuario.");
+            return viewName;
         }
 
         try {
             roomId = socketservice.createRoom(name);
-            if (roomId == null) {
-                return "error?type=roomidnulo";
+            if (roomId == null || roomId.isEmpty()) {
+                model.addAttribute("error", "Error al crear la sala.");
             }
         } catch (GameException ex) {
-            return "error?type=create";
+            model.addAttribute("error", "Se produjo un error inesperado.");
         }
         return "redirect:/room?id=" + roomId + "&name=" + name;
     }
@@ -41,15 +43,22 @@ public class Game {
                         @RequestParam(value = "name") String name,
                         Model model) {
                             
-        if (name == null) {
-            return "error?type=nombrevacio";
+        if (name.isEmpty() || name.isEmpty()) {
+            model.addAttribute("error", "Error al cargar el nombre de usuario.");
+            return viewName;
         }
 
-        if (roomid == null) {
-            return "error?type=idroomnulo";
+        if (roomid == null || roomid.isEmpty()) {
+            model.addAttribute("error", "Debe ingresar el número de sala.");
+            model.addAttribute("name", name);
+            return viewStart;
         } else {
             try {
-                socketservice.join(name, roomid);
+                if (!socketservice.join(name, roomid)) {
+                    model.addAttribute("error", "El número de sala es incorrecto.");
+                    model.addAttribute("name", name);
+                    return viewStart;
+                }
             } catch (GameException ex) {
                 return "error?type=join";
             }

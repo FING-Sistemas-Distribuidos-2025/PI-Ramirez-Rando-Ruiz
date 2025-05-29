@@ -13,6 +13,10 @@
     <span class="mb-2"> Ingresa tu nombre para comenzar</span>
     <div class="input-container text-center">
       <form th:action="@{/start}" method="get">
+
+          <div th:if="${error}" class="alert alert-danger mt-2" role="alert">
+            <span th:text="${error}"></span>
+          </div>
           <div>
             <input type="text" class="input-id" id="input-name" name="name" placeholder="Escribe tu nombre" autocomplete="off" />
           </div>
