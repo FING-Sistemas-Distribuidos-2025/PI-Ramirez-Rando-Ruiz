@@ -179,7 +179,6 @@ async def selectNextAlivePlayer(game):
     total = len(game.players)
     for i in range(1, total + 1):
         idx = (game.indiceJugadorActual + i) % total
-        print(idx)
         nombre = game.listaNombres[idx]
         if nombre in game.listaVivos:
             return nombre, idx
@@ -198,8 +197,15 @@ async def main():
 
 async def fetch_substring():
     global client
-    response = await client.get(urlSubstring)
-    return response.json()["substring"][0]
+    for i in range(0, 20):
+        try:
+            response = await client.get(urlSubstring)
+            return response.json()["substring"][0]
+        except Exception as e:
+            await asyncio.sleep(2)
+    return ""
+    
+
 
 async def publishRedis(game):
     global redis_conn

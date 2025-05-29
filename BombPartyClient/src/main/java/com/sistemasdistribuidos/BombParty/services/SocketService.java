@@ -4,28 +4,37 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.sistemasdistribuidos.BombParty.websockets.MyWebSocketClient;
+import com.sistemasdistribuidos.BombParty.websockets.WebSocketListener;
 import com.sistemasdistribuidos.BombParty.exceptions.GameException;
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+
 import java.net.URI;
+import java.net.http.WebSocket;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @Service
-public class SocketService {
+public class SocketService implements WebSocketListener {
 
     private MyWebSocketClient client;
     
     @Autowired
     private UsersService userService;
 
+    private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    private boolean reconnectInProgress = false;
+
     @PostConstruct
     public void init() throws Exception {
-        client = new MyWebSocketClient(new URI("ws://localhost:9000"));
-        client.connectBlocking();
+        connect();
     }
 
     public void sendMsg(String msg) {
@@ -169,5 +178,51 @@ public class SocketService {
             throw new GameException("Error esperando respuesta");
         }
 
+    }
+
+    @Override
+    public synchronized void onDisconnected() {
+        if (reconnectInProgress == false) {
+            System.out.println("Reintentando reconexión con el servidor...");
+            reconnectInProgress = true;
+            scheduleReconnect();
+        }
+    }
+
+    private void connect() {
+        try {
+            if (client != null && client.isOpen()) {
+                return;
+            }
+            client = new MyWebSocketClient(new URI("ws://localhost:9000"), this);
+            if (!client.connectBlocking()) {
+                System.out.println("Reintentando reconexión");
+                scheduleReconnect();
+            } else {
+                reconnectInProgress = false;
+            }
+            
+        } catch (Exception e) {
+            System.out.println("Error. Reintentando reconexión");
+            e.printStackTrace();
+            scheduleReconnect();
+        }
+    }
+
+    private void scheduleReconnect() {
+        scheduler.schedule(this::connect, 5, TimeUnit.SECONDS);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 }

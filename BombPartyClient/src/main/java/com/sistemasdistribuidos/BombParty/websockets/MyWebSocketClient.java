@@ -15,9 +15,12 @@ public class MyWebSocketClient extends WebSocketClient {
 
     ConcurrentHashMap<String, CompletableFuture<String>> pending;
 
-    public MyWebSocketClient(URI serverUri) throws URISyntaxException{
+    private WebSocketListener listener;
+
+    public MyWebSocketClient(URI serverUri, WebSocketListener listener) throws URISyntaxException{
         super(serverUri);
         pending = new ConcurrentHashMap<>();
+        this.listener = listener;
     }
 
     @Override
@@ -43,11 +46,22 @@ public class MyWebSocketClient extends WebSocketClient {
     @Override
     public void onClose(int code, String reason, boolean remote) {
         System.out.println("Conexión cerrada: " + reason);
+        if (listener != null) {
+            try {
+                listener.onDisconnected();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+        }
     }
 
     @Override
     public void onError(Exception ex) {
         System.err.println("Error: " + ex.getMessage());
+        if (listener != null) {
+            listener.onDisconnected();
+        }
     }
 
     public void insertOnPending(String id, CompletableFuture pend) {
