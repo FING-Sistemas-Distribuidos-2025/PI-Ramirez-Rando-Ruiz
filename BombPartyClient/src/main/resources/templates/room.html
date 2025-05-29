@@ -13,32 +13,23 @@
       <p><strong>ID de la Sala:</strong> <span th:text="${roomid}"></span></p>
     </div>
 
-    <!-- TURNO -->
     <div class="turn-info">
-      <!-- Si es tu turno -->
       <div id="turnMessage" class="your-turn">✅ ¡Es tu turno, <span id="currentPlayer"> </span>!</div>
-
-      <!-- Si NO es tu turno, descomenta y comenta el de arriba -->
-      <!-- <div class="not-your-turn">🕒 Turno de Ana</div> -->
     </div>
 
-    <!-- PALABRA -->
     <div class="word-display">
-      ✳️ Palabra: <span id="currentSubstring" class="text-primary">Computadora</span>
+      ✳️ Palabra: <span id="currentSubstring" class="text-primary"> </span>
     </div>
 
     <div id="answer"></div>
     
-    <!-- INPUT DE RESPUESTA -->
     <form id="sendWord" class="mt-3 mb-4 d-flex justify-content-center" action="#" method="get">
       <input type="text" class="form-control w-50 me-2" name="respuesta" placeholder="Escribe tu palabra..." autocomplete="off" />
       <button type="submit" class="btn btn-success">Enviar</button>
     </form>
 
-    <!-- GANADOR -->
     <div id="winnerMessage" class="alert alert-success fw-bold" style="display: none;"></div>
 
-    <!-- LISTA DE JUGADORES -->
     <h2 class="mt-4">Jugadores</h2>
     <div class="row justify-content-center">
       <div class="col-md-6" id="players">

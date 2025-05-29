@@ -71,9 +71,27 @@ async def handler(websocket):
             elif (action == "disconnection"):
                 roomid = message["roomId"]
                 game = gameList[roomid]
-                game.listaNombres.remove(name)
-                game.listaVivos.remove(name)
-                game.players.pop(name,None)
+                game.disconnectionList.append(name)
+                game.listaVivos.discard(name)
+                game.listaMuertos.add(name)
+                game.players[name] = "muerto"
+                sizePlayers = len(game.listaNombres)
+                if (sizePlayers == len(game.disconnectionList)):
+                    gameList.pop(game, None)
+                else:
+                    if (game.currentPlayer == name):
+                        await nextPlayer(game)
+                """
+                if (sizePlayers == 1):
+                    game.started = False
+                    game.currentPlayer = None
+                    game.currentSubstring = ""
+                elif (sizePlayers == 0):
+                    gameList.pop(roomid, None)
+                else:
+                    if (game.currentPlayer == name):
+                        await nextPlayer(game)
+                """
                 response = {"id": message["messageid"], "status": "OK", "message": "Disconnection", "roomid" : roomid}
             else:
                 response = {"id": message["messageid"], "status": "NOTOK", "message": "Bad action"}
@@ -83,6 +101,8 @@ async def handler(websocket):
             if (action == "join" or action == "create"):
                 asyncio.create_task(publishOnRedisWithTimer(0.5, game))
                 asyncio.create_task(publishOnRedisWithTimer(5, game))
+            elif (action == "disconnection"):
+                asyncio.create_task(publishRedis(game))
     #Si se cierra la conexión, se elimina al jugador de las listas
     except websockets.exceptions.ConnectionClosed:
         pass
@@ -111,28 +131,38 @@ async def startRound(game):
     
     while game.started:
         time = random.randint(40, 60)
-        await nextPlayer(game)
-        # Empieza el temporizador de la "bomba"
-        await countdown(time)
-        game.players[game.currentPlayer] = "muerto"
-        
-        game.listaVivos.discard(game.currentPlayer)
-        game.listaMuertos.add(game.currentPlayer)
+        if (len(game.listaVivos) > 1):
+            await nextPlayer(game)
+            # Empieza el temporizador de la "bomba"
+            await countdown(time)
+            if (len(game.listaVivos) > 1):
+                game.players[game.currentPlayer] = "muerto"
+                
+                game.listaVivos.discard(game.currentPlayer)
+                game.listaMuertos.add(game.currentPlayer)
         # Guardar lista de jugadores en redis
-        await publishRedis(game)
-
-        # Si queda un jugador, gana
-        if (len(game.listaVivos) == 1):
-            game.winner = game.listaVivos.pop()
-            game.listaVivos.add(game.winner)
             await publishRedis(game)
-            game.started = False
-            game.listaVivos = game.listaVivos | game.listaMuertos
-            game.indiceJugadorActual = 0
-            game.listaMuertos.clear()
-            game.winner = None
-            for jugador in game.players:
-                game.players[jugador] = "activo"
+        else:
+        # Si queda un jugador, gana
+                game.winner = game.listaVivos.pop()
+                game.listaVivos.add(game.winner)
+                await publishRedis(game)
+                game.started = False
+                await disconnectPlayers(game)
+                game.listaVivos = game.listaVivos | game.listaMuertos
+                game.indiceJugadorActual = 0
+                game.listaMuertos.clear()
+                game.winner = None
+                for jugador in game.players:
+                    game.players[jugador] = "activo"
+    return
+
+async def disconnectPlayers(game):
+    for i in game.disconnectionList:
+        game.listaMuertos.discard(i)
+        game.players.pop(i, None)
+        game.listaNombres.remove(i)
+    game.disconnectionList = []
     return
 
 # Se selecciona al siguiente jugador dentro de la partida,
@@ -147,10 +177,10 @@ async def selectNextAlivePlayer(game):
     total = len(game.players)
     for i in range(1, total + 1):
         idx = (game.indiceJugadorActual + i) % total
+        print(idx)
         nombre = game.listaNombres[idx]
         if nombre in game.listaVivos:
             return nombre, idx
-
     return None, -1  # No hay jugadores vivos
     
 # Temporizador

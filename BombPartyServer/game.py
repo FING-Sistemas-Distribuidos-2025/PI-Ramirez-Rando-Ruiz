@@ -7,8 +7,9 @@ class Game:
         self.listaNombres = []
         self.listaVivos = set()
         self.channel = "room:" + id
+        self.disconnectionList = []
         self.listaMuertos = set()
         self.currentPlayer = None
         self.currentSubstring = ""
         self.roomId = id
-        self.winner = None    
+        self.winner = None
