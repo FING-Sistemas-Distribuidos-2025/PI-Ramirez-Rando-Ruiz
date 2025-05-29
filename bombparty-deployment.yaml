@@ -1,0 +1,106 @@
+# Deployment y Service para app Python 1
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordsManager-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: wordsManager-app
+  template:
+    metadata:
+      labels:
+        app: wordsManager-app
+    spec:
+      containers:
+        - name: wordsManager-container
+          image: tomasrandom/wordsManager-app:latest
+          ports:
+            - containerPort: 5000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordsManager-service
+spec:
+  selector:
+    app: wordsManager-app
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP
+
+---
+# Deployment y Service para app Python 2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bombPartyServer-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bombPartyServer-app
+  template:
+    metadata:
+      labels:
+        app: bombPartyServer-app
+    spec:
+      containers:
+        - name: bombPartyServer-container
+          image: tomasrandom/bombPartyServer-app:latest
+          ports:
+            - containerPort: 9000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bombPartyServer-service
+spec:
+  selector:
+    app: bombPartyServer-app
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
+  type: ClusterIP
+
+---
+# Deployment y Service para app Spring Boot
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bombPartyClient-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bombPartyClient-app
+  template:
+    metadata:
+      labels:
+        app: bombPartyClient-app
+    spec:
+      containers:
+        - name: bombPartyClient-container
+          image: tomasrandom/bombPartyClient-app:latest
+          ports:
+            - containerPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bombPartyClient-service
+spec:
+  selector:
+    app: bombPartyClient-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
