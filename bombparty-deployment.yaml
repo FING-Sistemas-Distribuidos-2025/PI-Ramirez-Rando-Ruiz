@@ -1,10 +1,46 @@
-# Deployment y Service para app Python 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:8.0.1
+          ports:
+            - containerPort: 6379
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+spec:
+  selector:
+    app: redis
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
+  type: ClusterIP
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wordsManager-deployment
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: wordsManager-app
@@ -34,13 +70,12 @@ spec:
   type: ClusterIP
 
 ---
-# Deployment y Service para app Python 2
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: bombPartyServer-deployment
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: bombPartyServer-app
@@ -70,7 +105,6 @@ spec:
   type: ClusterIP
 
 ---
-# Deployment y Service para app Spring Boot
 apiVersion: apps/v1
 kind: Deployment
 metadata:
