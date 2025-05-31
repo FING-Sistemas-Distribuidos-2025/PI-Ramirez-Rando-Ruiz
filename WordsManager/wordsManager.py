@@ -3,46 +3,105 @@ from flask import jsonify
 import random
 from flask import request
 import unicodedata
+import redis
+import os
+import time
+import asyncio
+import redis.exceptions
 
-def create_app():
-    app = Flask(__name__)
-    return app
 
+r = None
+def connect_to_redis():
+    global r
+    while True:
+        try:
+            r = redis.Redis(host='localhost', port=6379, db=0)
+            r.ping()
+            print("Conectado a Redis.")
+            return r
+        except redis.exceptions.ConnectionError as e:
+            time.sleep(3)
+
+connect_to_redis()
+
+# Nombre del stream
+stream_name_request = 'requestsStream'
+stream_name_response = 'responsesStream'
+groupName = "wordsManagerGroup"
+
+
+CONSUMER_NAME = os.getenv("HOSTNAME", "wordsManager")
+
+try:
+    r.xgroup_create(name=stream_name_request, groupname=groupName, id='0-0', mkstream=True)
+except redis.exceptions.ResponseError as exception:
+    if "BUSYGROUP" in str(exception):
+        pass
+
+try:
+    r.xgroup_create(name=stream_name_response, groupname=groupName, id='0-0', mkstream=True)
+except redis.exceptions.ResponseError as exception:
+    if "BUSYGROUP" in str(exception):
+        pass
+
+async def listen():
+    while True:
+        try:
+            msgs = r.xreadgroup(groupname=groupName, consumername=CONSUMER_NAME, streams={stream_name_request : ">"}, count=10, block=5000)
+            for stream, msg in msgs: # [(groupName, [(idMensaje, data)])]
+                for msgId, data in msg:
+                    r.xack(stream_name_request, groupName, msgId)
+                    r.xdel(stream_name_request, msgId)
+                    data = {k.decode(): v.decode() for k, v in data.items()}
+                    action = data.get("action")
+                    if action == "validate":
+                        await validateWord(data)
+                    elif action == "word":
+                        await get_substring()
+
+        except redis.exceptions.ConnectionError as exception:
+            connect_to_redis()
+        except Exception as e:
+            print(e)
+            print("Error leyendo el stream:")
+            time.sleep(1)
+
+async def answer(json):
+    try:
+        msgId = r.xadd(stream_name_response, json)
+        return
+    except redis.exceptions.ConnectionError as e:
+        print("Error al enviar respuesta a redis:", e)
+    
 words = set()
 substrings = []
 wordsSet = set()
-app = create_app()
 
-@app.route("/api/v1/words", methods=['GET'])
-def get_words():
-    wordsList = random.sample(words, 10)
-    return jsonify({"words" : wordsList})
-
-@app.route("/api/v1/substring" , methods = ['GET'])
-def get_substring():
+async def get_substring():
     substring = random.sample(substrings,1)
-    return jsonify({"substring" : substring})
+    await answer({"word" : substring[0]})
+    return
 
-@app.route("/api/v1/word", methods=['GET'])
-def get_word():
-    wordsList = random.sample(words, 1)
-    return jsonify({"words" : wordsList})
-
-@app.route("/api/v1/word/validate", methods=['POST'])
-def validateWord():
+async def validateWord(jsonData):
     global words
-    jsonData = request.get_json(force=True)
 
     if (jsonData.get("word") is None):
-        return jsonify({"message" : "BAD REQUEST"}), 400
+        await answer({"message" : "BAD REQUEST"})
     else:
-        word = quitar_tildes(jsonData["word"].strip().lower())
+        word = await quitar_tildes(jsonData["word"].strip().lower())
         if word in words:
-            return jsonify({"message" : True})
+            await answer({"message" : "True"})
         else: 
-            return jsonify({"message" : False})
+            await answer({"message" : "False"})
+    return
 
-def quitar_tildes(texto):
+async def quitar_tildes(texto):
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', texto)
+        if unicodedata.category(c) != 'Mn'
+    ).lower()
+
+def quitar_tildesNotAsync(texto):
     return ''.join(
         c for c in unicodedata.normalize('NFD', texto)
         if unicodedata.category(c) != 'Mn'
@@ -51,14 +110,12 @@ def quitar_tildes(texto):
 def loadWords():
     global words, substrings
     with open("palabras.txt", "r", encoding="utf-8") as file:
-        words = set(quitar_tildes(line.strip()) for line in file if line.strip())
+        words = set(quitar_tildesNotAsync(line.strip()) for line in file if line.strip())
     with open("substrings.txt", "r", encoding="utf-8") as file:
         substrings = [line.strip() for line in file if line.strip()]
     return
 
-loadWords()
-
 if __name__ == "__main__":
     loadWords()
-    app.run(debug=False, threaded=True)
+    asyncio.run(listen())
 
