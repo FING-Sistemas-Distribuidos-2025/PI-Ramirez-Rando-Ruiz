@@ -7,13 +7,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import com.sistemasdistribuidos.BombParty.exceptions.GameException;
-import com.sistemasdistribuidos.BombParty.services.SocketService;
+import com.sistemasdistribuidos.BombParty.services.RedisService;
 
 @Component
 public class WebSocketEventListener {
 
     @Autowired
-    private SocketService socketService;
+    private RedisService redisService;
 
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) throws GameException {
@@ -24,7 +24,7 @@ public class WebSocketEventListener {
 
         if (user != null && roomId != null) {
             System.out.println("Jugador desconectado: " + user);
-            socketService.desconectar(user , roomId);
+            redisService.desconectar(user , roomId);
         }
     }
 }

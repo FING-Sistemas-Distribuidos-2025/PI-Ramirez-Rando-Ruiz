@@ -51,9 +51,7 @@ spec:
     spec:
       containers:
         - name: wordsManager-container
-          image: tomasrandom/wordsManager-app:latest
-          ports:
-            - containerPort: 5000
+          image: tomasrandom/wordsmanager-app:latest
 
 ---
 apiVersion: v1
@@ -63,10 +61,6 @@ metadata:
 spec:
   selector:
     app: wordsManager-app
-  ports:
-    - protocol: TCP
-      port: 5000
-      targetPort: 5000
   type: ClusterIP
 
 ---
@@ -86,10 +80,7 @@ spec:
     spec:
       containers:
         - name: bombPartyServer-container
-          image: tomasrandom/bombPartyServer-app:latest
-          ports:
-            - containerPort: 9000
-
+          image: tomasrandom/bombpartyserver-app:latest
 ---
 apiVersion: v1
 kind: Service
@@ -98,10 +89,6 @@ metadata:
 spec:
   selector:
     app: bombPartyServer-app
-  ports:
-    - protocol: TCP
-      port: 9000
-      targetPort: 9000
   type: ClusterIP
 
 ---
@@ -110,7 +97,7 @@ kind: Deployment
 metadata:
   name: bombPartyClient-deployment
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: bombPartyClient-app
@@ -121,7 +108,7 @@ spec:
     spec:
       containers:
         - name: bombPartyClient-container
-          image: tomasrandom/bombPartyClient-app:latest
+          image: tomasrandom/bombpartyclient-app:latest
           ports:
             - containerPort: 8080
 

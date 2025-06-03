@@ -1,7 +1,4 @@
-from flask import Flask
-from flask import jsonify
 import random
-from flask import request
 import unicodedata
 import redis
 import os
@@ -57,7 +54,7 @@ async def listen():
                     if action == "validate":
                         await validateWord(data)
                     elif action == "word":
-                        await get_substring()
+                        await get_substring(data)
 
         except redis.exceptions.ConnectionError as exception:
             connect_to_redis()
@@ -66,9 +63,10 @@ async def listen():
             print("Error leyendo el stream:")
             time.sleep(1)
 
-async def answer(json):
+async def answer(json, data):
     try:
-        msgId = r.xadd(stream_name_response, json)
+        print(data)
+        msgId = r.xadd(stream_name_response + ":" + data.get("from"), json)
         return
     except redis.exceptions.ConnectionError as e:
         print("Error al enviar respuesta a redis:", e)
@@ -77,22 +75,22 @@ words = set()
 substrings = []
 wordsSet = set()
 
-async def get_substring():
+async def get_substring(data):
     substring = random.sample(substrings,1)
-    await answer({"word" : substring[0]})
+    await answer({"word" : substring[0]}, data)
     return
 
 async def validateWord(jsonData):
     global words
 
     if (jsonData.get("word") is None):
-        await answer({"message" : "BAD REQUEST"})
+        await answer({"message" : "BAD REQUEST"}, jsonData)
     else:
         word = await quitar_tildes(jsonData["word"].strip().lower())
         if word in words:
-            await answer({"message" : "True"})
+            await answer({"message" : "True"}, jsonData)
         else: 
-            await answer({"message" : "False"})
+            await answer({"message" : "False"}, jsonData)
     return
 
 async def quitar_tildes(texto):

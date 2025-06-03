@@ -1,115 +1,140 @@
 import uuid
-import redis.asyncio as redis
-import websockets
+import redis.asyncio as Redis
+import redis
 import asyncio
 import random
-from websockets import serve
 import json
 from game import Game
-import httpx
-
-urlSubstring = "http://localhost:5000/api/v1/substring"
-urlValidation = "http://localhost:5000/api/v1/word/validate"
+import os
 
 # Conexión a Redis
-redis_conn = redis.Redis(host='localhost', port=6379, db=0)
+redis_conn = None
 
-client = httpx.AsyncClient()
+stream_name_request = 'requestsStream'
+stream_name_response = 'responsesStream'
+stream_name_response_client = 'backendClientStream'
+groupName = "wordsManagerGroup"
+
+CONSUMER_NAME = os.getenv("HOSTNAME", "server")
+
 gameList = {}
-#Handler para manejar mensajes desde los clientes
-async def handler(websocket):
-    global listaSockets, listaVivos, listaMuertos, listaNombres, listaJugadores
-    #Verificamos si el jugador esta agregado en la lista de jugadores
-    try:  
-        async for message in websocket:
-            print(f"Mensaje del cliente: {message}")
-            message = json.loads(message)
-            action = message["action"]
-            name = message["name"]
-            if (action == "create"):
-                roomid = uuid.uuid4().hex[:4]
-                game = Game(roomid)
-                game.listaVivos.add(name)
-                game.listaNombres.append(name)
-                game.players[name] = "activo"
-                gameList[roomid] = game
-                response = {"id": message["messageid"], "status": "OK", "message": "Created", "roomid" : roomid}
-            elif (action == "join"):
-                roomid = message["roomId"]
-                if roomid in gameList:
-                    game = gameList[roomid]
-                    if (game.started == False):
-                        if name not in game.listaVivos:
-                            game.listaVivos.add(name)
-                            game.players[name] = "activo"
-                            game.listaNombres.append(name)
-                            if (len(game.listaVivos) == 2 and game.starting == False):
-                                game.starting = True
-                                asyncio.create_task(startGame(game))
-                            response = {"id": message["messageid"], "status": "OK", "message": "Joined"}
-                        else:
-                            response = {"id": message["messageid"], "status": "NOTOK", "message": "Name already used"}
-                    else:
-                        response = {"id": message["messageid"], "status": "NOTOK", "message": "Game already started"}
-                else:
-                    response = {"id": message["messageid"], "status": "NOTOK", "message": "Invalid room id"}
-            elif (action == "answer") :
-                word = message["word"]
-                roomid = message["roomId"]
-                game = gameList[roomid]
-                if (name == game.currentPlayer):
-                    if game.currentSubstring in word:
-                        condition = await validateWord(word)
-                    else:
-                        condition = False
-                    if condition:
-                        response = {"id": message["messageid"], "status": "OK", "message": "Correct"}
-                        await nextPlayer(game)
-                    else:
-                        response = {"id": message["messageid"], "status": "NOTOK", "message": "Incorrect"}
-                else:
-                    response = {"id": message["messageid"], "status": "NOTOK", "message": "Not current player"}
-            
-            elif (action == "disconnection"):
-                roomid = message["roomId"]
-                game = gameList[roomid]
-                game.disconnectionList.append(name)
-                game.listaVivos.discard(name)
-                game.listaMuertos.add(name)
-                game.players[name] = "muerto"
-                sizePlayers = len(game.listaNombres)
-                if (sizePlayers == len(game.disconnectionList)):
-                    gameList.pop(game, None)
-                else:
-                    if (game.currentPlayer == name):
-                        await nextPlayer(game)
-                """
-                if (sizePlayers == 1):
-                    game.started = False
-                    game.currentPlayer = None
-                    game.currentSubstring = ""
-                elif (sizePlayers == 0):
-                    gameList.pop(roomid, None)
-                else:
-                    if (game.currentPlayer == name):
-                        await nextPlayer(game)
-                """
-                response = {"id": message["messageid"], "status": "OK", "message": "Disconnection", "roomid" : roomid}
-            else:
-                response = {"id": message["messageid"], "status": "NOTOK", "message": "Bad action"}
 
-            print(f"Respuesta del servidor: {response}")
-            await websocket.send(json.dumps(response))
-            if (action == "join" or action == "create"):
-                asyncio.create_task(publishOnRedisWithTimer(0.5, game))
-                asyncio.create_task(publishOnRedisWithTimer(5, game))
-            elif (action == "disconnection"):
-                asyncio.create_task(publishRedis(game))
-    #Si se cierra la conexión, se elimina al jugador de las listas
-    except websockets.exceptions.ConnectionClosed:
-        pass
-    finally:
-        pass
+
+async def connect_to_redis():
+    global redis_conn
+    while True:
+        try:
+            redis_conn = await Redis.Redis(host='localhost', port=6379, db=0)
+            await redis_conn.ping()
+            print("Conectado a Redis.")
+            return redis_conn
+        except redis.exceptions.ConnectionError as e:
+            await countdown(3)
+
+
+async def listen():
+    while True:
+        try:
+            
+            msgs = await redis_conn.xread({"server":"$"}, count=3, block=0)
+            for stream, msg in msgs: # [(groupName, [(idMensaje, data)])]
+                for msgId, data in msg:
+                    message = {k.decode(): v.decode() for k, v in data.items()}
+                    print(f"Mensaje del cliente: {message}")
+                    fromClient = message["from"]
+                    action = message["action"]
+                    name = message["name"]
+                    await redis_conn.xdel("server", msgId)
+                    if (action == "create"):
+                        roomid = uuid.uuid4().hex[:4]
+                        game = Game(roomid)
+                        game.listaVivos.add(name)
+                        game.listaNombres.append(name)
+                        game.players[name] = "activo"
+                        gameList[roomid] = game
+                        response = {"id": message["messageid"], "status": "OK", "message": "Created", "roomid" : roomid}
+                    elif (action == "join"):
+                        roomid = message["roomId"]
+                        if roomid in gameList:
+                            game = gameList[roomid]
+                            if (game.started == False):
+                                if name not in game.listaVivos:
+                                    game.listaVivos.add(name)
+                                    game.players[name] = "activo"
+                                    game.listaNombres.append(name)
+                                    if (len(game.listaVivos) == 2 and game.starting == False):
+                                        game.starting = True
+                                        asyncio.create_task(startGame(game))
+                                    response = {"id": message["messageid"], "status": "OK", "message": "Joined"}
+                                else:
+                                    response = {"id": message["messageid"], "status": "NOTOK", "message": "Name already used"}
+                            else:
+                                response = {"id": message["messageid"], "status": "NOTOK", "message": "Game already started"}
+                        else:
+                            response = {"id": message["messageid"], "status": "NOTOK", "message": "Invalid room id"}
+                    elif (action == "answer") :
+                        word = message["word"]
+                        roomid = message["roomId"]
+                        game = gameList[roomid]
+                        if (name == game.currentPlayer):
+                            if game.currentSubstring in word:
+                                condition = await validateWord(word)
+                            else:
+                                condition = False
+                            if condition:
+                                response = {"id": message["messageid"], "status": "OK", "message": "Correct"}
+                                await nextPlayer(game)
+                            else:
+                                response = {"id": message["messageid"], "status": "NOTOK", "message": "Incorrect"}
+                        else:
+                            response = {"id": message["messageid"], "status": "NOTOK", "message": "Not current player"}
+                    
+                    elif (action == "disconnection"):
+                        print(message)
+                        roomid = message["roomId"]
+                        game = gameList.get(roomid)
+                        if (game != None):
+                            game.disconnectionList.append(name)
+                            game.listaVivos.discard(name)
+                            game.listaMuertos.add(name)
+                            game.players[name] = "muerto"
+                            sizePlayers = len(game.listaNombres)
+                            if (sizePlayers == len(game.disconnectionList)):
+                                gameList.pop(game, None)
+                            else:
+                                if (game.currentPlayer == name):
+                                    await nextPlayer(game)
+                            """
+                            if (sizePlayers == 1):
+                                game.started = False
+                                game.currentPlayer = None
+                                game.currentSubstring = ""
+                            elif (sizePlayers == 0):
+                                gameList.pop(roomid, None)
+                            else:
+                                if (game.currentPlayer == name):
+                                    await nextPlayer(game)
+                            """
+                            response = {"id": message["messageid"], "status": "OK", "message": "Disconnection", "roomid" : roomid}
+                        else:
+                            response = {"id": message["messageid"], "status": "NOTOK", "message": "Game not found"}
+                    else:
+                        response = {"id": message["messageid"], "status": "NOTOK", "message": "Bad action"}
+
+                    print(f"Respuesta del servidor: {response}")
+                    await redis_conn.xadd(stream_name_response_client + ":" + fromClient, response)
+                    if (action == "join" or action == "create"):
+                        asyncio.create_task(publishOnRedisWithTimer(0.5, game))
+                        asyncio.create_task(publishOnRedisWithTimer(5, game))
+                    elif (action == "disconnection"):
+                        if game != None:
+                            asyncio.create_task(publishRedis(game))
+
+        except redis.exceptions.ConnectionError as exception:
+            await connect_to_redis()
+        except Exception as e:
+            print(e)
+            print("Error leyendo el stream")
 
 async def publishOnRedisWithTimer(seconds, game):
     await asyncio.sleep(seconds)
@@ -179,7 +204,6 @@ async def selectNextAlivePlayer(game):
     total = len(game.players)
     for i in range(1, total + 1):
         idx = (game.indiceJugadorActual + i) % total
-        print(idx)
         nombre = game.listaNombres[idx]
         if nombre in game.listaVivos:
             return nombre, idx
@@ -192,27 +216,49 @@ async def countdown(segundos):
 
 async def main():
     print("Iniciando")
-    async with serve(handler , "localhost" , 9000) as server:
-        await server.serve_forever()
-    await client.aclose()
+    await connect_to_redis()
+    await listen()
 
 async def fetch_substring():
-    global client
-    response = await client.get(urlSubstring)
-    return response.json()["substring"][0]
+    global redis_conn
+    json = {"action" : "word", "from" : CONSUMER_NAME}
+    await redis_conn.xadd(stream_name_request, json)
+    response = await listenAnswer()
+    response = response.get("word")
+    if response == None:
+        return ""
+    else:
+        return response
 
+async def listenAnswer():
+    global redis_conn
+    while True:
+        response = await redis_conn.xread({stream_name_response + ":" + CONSUMER_NAME : "$"}, block=0)
+        if response:
+            for stream, msgs in response:
+                for msgId, data in msgs:
+                    data = {k.decode(): v.decode() for k, v in data.items()}
+                    await redis_conn.xdel(stream_name_response + ":" + CONSUMER_NAME, msgId)
+                    return data
+                    
 async def publishRedis(game):
     global redis_conn
     data = {"players" : game.players, "winner" : game.winner, "word" : game.currentSubstring, "currentPlayer" : game.currentPlayer}
     await redis_conn.publish(game.channel, json.dumps(data))
 
 async def validateWord(word):
-    global client
-    data = {
-        "word": word
-    }
-    response = await client.post(urlValidation, json=data)
-    return response.json()["message"]
+    global redis_conn
+    json = {"action" : "validate", "word": word, "from" : CONSUMER_NAME}
+    await redis_conn.xadd(stream_name_request, json)
+    response = await listenAnswer()
+    response = response.get("message")
+    if (response != "True" and response != "False"):
+        return False
+    else:
+        if response == "True":
+            return True
+        else:
+            return False
 
 if __name__ == "__main__":
     asyncio.run(main())

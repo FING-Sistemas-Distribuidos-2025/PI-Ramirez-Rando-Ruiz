@@ -7,8 +7,9 @@ const stompClient = Stomp.over(socket);
 stompClient.connect({ username: userName, roomid: roomId }, function (frame) {
 
     stompClient.subscribe("/topic/room/" + roomId, function (message) {
+        console.log(message)
         const data = JSON.parse(message.body);
-        console.log(data)
+        
         document.getElementById("currentPlayer").innerText = data.currentPlayer;
         document.getElementById("currentSubstring").innerText = data.word;
 
