@@ -38,76 +38,56 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: wordsManager-deployment
+  name: wordsmanager-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: wordsManager-app
+      app: wordsmanager-app
   template:
     metadata:
       labels:
-        app: wordsManager-app
+        app: wordsmanager-app
     spec:
       containers:
-        - name: wordsManager-container
+        - name: wordsmanager-container
           image: tomasrandom/wordsmanager-app:latest
 
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: wordsManager-service
-spec:
-  selector:
-    app: wordsManager-app
-  type: ClusterIP
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bombPartyServer-deployment
+  name: bombpartyserver-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: bombPartyServer-app
+      app: bombpartyserver-app
   template:
     metadata:
       labels:
-        app: bombPartyServer-app
+        app: bombpartyserver-app
     spec:
       containers:
-        - name: bombPartyServer-container
+        - name: bombpartyserver-container
           image: tomasrandom/bombpartyserver-app:latest
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: bombPartyServer-service
-spec:
-  selector:
-    app: bombPartyServer-app
-  type: ClusterIP
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bombPartyClient-deployment
+  name: bombpartyclient-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: bombPartyClient-app
+      app: bombpartyclient-app
   template:
     metadata:
       labels:
-        app: bombPartyClient-app
+        app: bombpartyclient-app
     spec:
       containers:
-        - name: bombPartyClient-container
+        - name: bombpartyclient-container
           image: tomasrandom/bombpartyclient-app:latest
           ports:
             - containerPort: 8080
@@ -116,10 +96,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: bombPartyClient-service
+  name: bombpartyclient-service
 spec:
   selector:
-    app: bombPartyClient-app
+    app: bombpartyclient-app
   ports:
     - protocol: TCP
       port: 8080

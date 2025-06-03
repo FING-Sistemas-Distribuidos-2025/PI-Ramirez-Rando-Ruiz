@@ -24,7 +24,7 @@ async def connect_to_redis():
     global redis_conn
     while True:
         try:
-            redis_conn = await Redis.Redis(host='localhost', port=6379, db=0)
+            redis_conn = await Redis.Redis(host='redis-service', port=6379, db=0)
             await redis_conn.ping()
             print("Conectado a Redis.")
             return redis_conn

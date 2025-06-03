@@ -12,7 +12,7 @@ def connect_to_redis():
     global r
     while True:
         try:
-            r = redis.Redis(host='localhost', port=6379, db=0)
+            r = redis.Redis(host='redis-service', port=6379, db=0)
             r.ping()
             print("Conectado a Redis.")
             return r
