@@ -1,3 +1,4 @@
+import traceback
 import uuid
 import redis.asyncio as Redis
 import redis
@@ -90,7 +91,6 @@ async def listen():
                             response = {"id": message["messageid"], "status": "NOTOK", "message": "Not current player"}
                     
                     elif (action == "disconnection"):
-                        print(message)
                         roomid = message["roomId"]
                         game = gameList.get(roomid)
                         if (game != None):
@@ -133,7 +133,6 @@ async def listen():
         except redis.exceptions.ConnectionError as exception:
             await connect_to_redis()
         except Exception as e:
-            print(e)
             print("Error leyendo el stream")
 
 async def publishOnRedisWithTimer(seconds, game):

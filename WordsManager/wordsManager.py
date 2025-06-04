@@ -65,7 +65,6 @@ async def listen():
 
 async def answer(json, data):
     try:
-        print(data)
         msgId = r.xadd(stream_name_response + ":" + data.get("from"), json)
         return
     except redis.exceptions.ConnectionError as e:

@@ -7,13 +7,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import com.sistemasdistribuidos.BombParty.exceptions.GameException;
-import com.sistemasdistribuidos.BombParty.services.RedisService;
+import com.sistemasdistribuidos.BombParty.services.RedisService2;
 
 @Component
 public class WebSocketEventListener {
 
     @Autowired
-    private RedisService redisService;
+    private RedisService2 redisService;
 
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) throws GameException {

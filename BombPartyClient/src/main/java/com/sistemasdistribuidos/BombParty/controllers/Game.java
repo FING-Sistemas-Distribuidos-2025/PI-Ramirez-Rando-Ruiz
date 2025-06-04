@@ -7,8 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import com.sistemasdistribuidos.BombParty.exceptions.GameException;
-import com.sistemasdistribuidos.BombParty.services.RedisService;
-import com.sistemasdistribuidos.BombParty.services.SocketService;
+import com.sistemasdistribuidos.BombParty.services.RedisService2;
 
 @Controller
 public class Game {
@@ -17,10 +16,7 @@ public class Game {
     private String viewName = "name";
 
     @Autowired
-    private SocketService socketservice;
-
-    @Autowired
-    private RedisService redisService;
+    private RedisService2 redisService2;
 
     @GetMapping("/create")
     public String create(@RequestParam(value = "name") String name, Model model) {
@@ -32,7 +28,7 @@ public class Game {
         }
 
         try {
-            roomId = redisService.createRoom(name);
+            roomId = redisService2.createRoom(name);
             if (roomId == null || roomId.isEmpty()) {
                 model.addAttribute("error", "Error al crear la sala.");
             }
@@ -58,7 +54,7 @@ public class Game {
             return viewStart;
         } else {
             try {
-                if (!redisService.join(name, roomid)) {
+                if (!redisService2.joinRoom(name, roomid)) {
                     model.addAttribute("error", "El número de sala es incorrecto.");
                     model.addAttribute("name", name);
                     return viewStart;
@@ -81,7 +77,7 @@ public class Game {
     @GetMapping("/answer")
     public String rightAnswer(@RequestParam(value = "respuesta") String answer, @RequestParam(value = "name") String name, @RequestParam(value = "roomid") String roomId) {
         try {
-            if (redisService.answer(name, roomId, answer)) {
+            if (redisService2.answer(name, roomId, answer)) {
                 return "fragments/right :: rightAnswer";
             } else {
                 return "fragments/right :: wrongAnswer";
