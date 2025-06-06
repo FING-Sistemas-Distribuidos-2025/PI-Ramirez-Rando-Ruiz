@@ -129,7 +129,7 @@ public class RedisService2 {
         }
     }
 
-    public boolean joinRoom(String name, String roomId) throws GameException {
+    public void joinRoom(String name, String roomId) throws GameException {
         try {
             String correlationId = UUID.randomUUID().toString();
 
@@ -149,11 +149,18 @@ public class RedisService2 {
             }
 
             Map<String, Object> response = mapper.readValue(responseStr, Map.class);
-            if ("OK".equals(response.get("status"))) {
-                return true;
-            } else {
-                throw new GameException("Error al unirse a la sala: " + response.getOrDefault("error", "desconocido"));
+
+            if ("NOTOK".equals(response.get("status"))) {
+                String message = (String) response.get("message");
+                if (message.equals("Invalid room id")) {
+                    throw new GameException("El número de sala es inválido.");
+                }else if(message.equals("Name already used")){
+                    throw new GameException("El nombre de usuario elegido ya está en uso.");
+                }else if (message.equals("Game already started")){
+                    throw new GameException("El juego está en curso, debe esperar a que empiece una nueva partida.");
+                }
             }
+
         } catch (GameException ex) {
             throw ex;
         } catch (TimeoutException tex) {

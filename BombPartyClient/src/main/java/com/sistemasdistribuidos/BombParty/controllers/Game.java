@@ -43,26 +43,26 @@ public class Game {
                         @RequestParam(value = "name") String name,
                         Model model) {
                             
-        if (name.isEmpty() || name.isEmpty()) {
+        if (name == null || name.isEmpty()) {
             model.addAttribute("error", "Error al cargar el nombre de usuario.");
             return viewName;
         }
 
+        model.addAttribute("name", name);
+
         if (roomid == null || roomid.isEmpty()) {
             model.addAttribute("error", "Debe ingresar el número de sala.");
-            model.addAttribute("name", name);
             return viewStart;
-        } else {
-            try {
-                if (!redisService2.joinRoom(name, roomid)) {
-                    model.addAttribute("error", "El número de sala es incorrecto.");
-                    model.addAttribute("name", name);
-                    return viewStart;
-                }
-            } catch (GameException ex) {
-                return "error?type=join";
-            }
-            
+        }
+
+        try {
+            redisService2.joinRoom(name, roomid);
+        } catch (GameException ex) {
+            model.addAttribute("error", ex.getMessage());
+            return viewStart;
+        }catch (Exception e){
+            model.addAttribute("error", e.getMessage());
+            return viewStart;
         }
         return "redirect:/room?id=" + roomid + "&name=" + name;
     }

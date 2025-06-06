@@ -10,7 +10,7 @@ stompClient.connect({ username: userName, roomid: roomId }, function (frame) {
         console.log(message)
         const data = JSON.parse(message.body);
         
-        document.getElementById("currentPlayer").innerText = data.currentPlayer;
+        //document.getElementById("currentPlayer").innerText = data.currentPlayer;
         document.getElementById("currentSubstring").innerText = data.word;
 
         const lista = document.getElementById("players");
@@ -21,6 +21,10 @@ stompClient.connect({ username: userName, roomid: roomId }, function (frame) {
         Object.entries(data.players).forEach(([jugador, estado]) => {
             const card = document.createElement("div");
             card.classList.add("player-card");
+
+            if (!data.winner && jugador === data.currentPlayer) {
+                card.classList.add("current-turn");
+            }
 
             const infoDiv = document.createElement("div");
             infoDiv.classList.add("player-info");
@@ -58,7 +62,7 @@ stompClient.connect({ username: userName, roomid: roomId }, function (frame) {
 
             if (jugador === userName) {
                 userState = estado;
-    }
+            }
         });
 
         const sendForm = document.getElementById("sendWord");
@@ -80,11 +84,13 @@ stompClient.connect({ username: userName, roomid: roomId }, function (frame) {
 
         const winnerMessage = document.getElementById("winnerMessage");
         const turnMessage = document.getElementById("turnMessage");
-
+        const currentPlayerSpan = document.getElementById("currentPlayer");
 
         if (data.winner) {
             turnMessage.style.display = "none";
-            winnerMessage.innerText = `🎉 ¡${data.winner} ha ganado la partida!`;
+
+            document.getElementById("winnerName").innerText = data.winner;
+
             winnerMessage.style.display = "block";
 
             sendForm.hidden = true;
@@ -93,7 +99,15 @@ stompClient.connect({ username: userName, roomid: roomId }, function (frame) {
             input.value = "";
         } else {
             winnerMessage.style.display = "none"; // Ocultar si aún no hay ganador
-            turnMessage.style.display = "block"; 
+
+            if (data.currentPlayer && data.currentPlayer.trim() !== "") {
+                currentPlayerSpan.innerText = data.currentPlayer;
+                turnMessage.style.display = "block";
+            } else {
+                currentPlayerSpan.innerText = "";
+                turnMessage.style.display = "none";
+            }
+
         }
 
     });

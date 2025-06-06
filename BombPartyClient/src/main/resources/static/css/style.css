@@ -140,3 +140,35 @@ h1 {
   border-radius: 8px;
   margin-bottom: 10px;
 }
+
+.current-turn {
+  box-shadow: 0 0 15px 5px #428cfa; /* Brillo verde */
+  border-color: #4791ff;
+  animation: pulse-turn 1.5s infinite;
+}
+
+@keyframes pulse-turn {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+.victory-banner {
+  border: 3px solid gold;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #d4edda, #c3e6cb);
+  animation: popIn 0.8s ease-out;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+@keyframes popIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
