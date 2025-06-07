@@ -70,7 +70,7 @@ public class RedisService2 {
                             if (future != null) {
                                 future.complete(mapper.writeValueAsString(msg.getValue()));
                             } else {
-                                log.warn("No correlationId pendiente: {}", correlationId);
+                                log.warn("No hay correlationId pendiente", correlationId);
                             }
 
                             redisTemplate.opsForStream().delete(streamKey, msg.getId());
@@ -223,15 +223,15 @@ public class RedisService2 {
 
             Map<String, Object> response = mapper.readValue(responseStr, Map.class);
             if ("OK".equals(response.get("status"))) {
-                log.info("Usuario {} desconectado correctamente de la sala {}", name, roomId);
+                log.info("Usuario desconectado correctamente de la sala", name, roomId);
             } else {
-                log.warn("Error al desconectar al usuario {} de la sala {}: {}", name, roomId, response.getOrDefault("error", "desconocido"));
+                log.warn("Error al desconectar al usuario de la sala", name, roomId, response.getOrDefault("error", "desconocido"));
             }
         } catch (TimeoutException tex) {
             throw new GameException("Timeout esperando respuesta del servidor");
         } catch (Exception e) {
-            log.error("Error al desconectarse", e);
-            throw new GameException("Error al desconectarse: " + e.getMessage());
+            log.error("Error al desconectarse");
+            throw new GameException("Error al desconectarse");
         }
     }
 

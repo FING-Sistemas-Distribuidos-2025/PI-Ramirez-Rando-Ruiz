@@ -16,7 +16,7 @@ public class WebSocketEventListener {
     private RedisService2 redisService;
 
     @EventListener
-    public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) throws GameException {
+    public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         SimpMessageHeaderAccessor headers = SimpMessageHeaderAccessor.wrap(event.getMessage());
 
         String user = (String) headers.getSessionAttributes().get("username");
@@ -24,7 +24,12 @@ public class WebSocketEventListener {
 
         if (user != null && roomId != null) {
             System.out.println("Jugador desconectado: " + user);
-            redisService.desconectar(user , roomId);
+            try {
+                redisService.desconectar(user , roomId);
+            } catch (Exception ex) {
+                System.out.println("Error al desconectar.");
+            }
+            
         }
     }
 }
