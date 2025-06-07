@@ -1,6 +1,6 @@
 import random
 import unicodedata
-import redis
+import redis.asyncio as redis
 import os
 import time
 import asyncio
@@ -8,7 +8,7 @@ import redis.exceptions
 
 
 r = None
-def connect_to_redis():
+async def connect_to_redis():
     global r
     while True:
         try:
@@ -19,8 +19,6 @@ def connect_to_redis():
         except redis.exceptions.ConnectionError as e:
             time.sleep(3)
 
-connect_to_redis()
-
 # Nombre del stream
 stream_name_request = 'requestsStream'
 stream_name_response = 'responsesStream'
@@ -28,23 +26,28 @@ groupName = "wordsManagerGroup"
 
 
 CONSUMER_NAME = os.getenv("HOSTNAME", "wordsManager")
+async def createGroups():
+    try:
+        r.xgroup_create(name=stream_name_request, groupname=groupName, id='0-0', mkstream=True)
+    except redis.exceptions.ResponseError as exception:
+        if "BUSYGROUP" in str(exception):
+            pass
 
-try:
-    r.xgroup_create(name=stream_name_request, groupname=groupName, id='0-0', mkstream=True)
-except redis.exceptions.ResponseError as exception:
-    if "BUSYGROUP" in str(exception):
-        pass
-
-try:
-    r.xgroup_create(name=stream_name_response, groupname=groupName, id='0-0', mkstream=True)
-except redis.exceptions.ResponseError as exception:
-    if "BUSYGROUP" in str(exception):
-        pass
+    try:
+        r.xgroup_create(name=stream_name_response, groupname=groupName, id='0-0', mkstream=True)
+    except redis.exceptions.ResponseError as exception:
+        if "BUSYGROUP" in str(exception):
+            pass
 
 async def listen():
+    await connect_to_redis()
+    await createGroups()
     while True:
         try:
-            msgs = r.xreadgroup(groupname=groupName, consumername=CONSUMER_NAME, streams={stream_name_request : ">"}, count=10, block=5000)
+            msgs = await asyncio.to_thread(r.xreadgroup, groupname=groupName, consumername=CONSUMER_NAME, streams={stream_name_request: ">"}, count=10, block=2000)
+            if msgs == []:
+                pending_msgs = await asyncio.to_thread(r.xreadgroup, groupname=groupName, consumername=CONSUMER_NAME, streams={stream_name_request: "0"}, count=10, block=2000)
+                msgs = pending_msgs
             for stream, msg in msgs: # [(groupName, [(idMensaje, data)])]
                 for msgId, data in msg:
                     r.xack(stream_name_request, groupName, msgId)
@@ -52,16 +55,15 @@ async def listen():
                     data = {k.decode(): v.decode() for k, v in data.items()}
                     action = data.get("action")
                     if action == "validate":
-                        await validateWord(data)
+                        asyncio.create_task(validateWord(data))
                     elif action == "word":
-                        await get_substring(data)
-
+                        asyncio.create_task(get_substring(data))
         except redis.exceptions.ConnectionError as exception:
-            connect_to_redis()
+            await connect_to_redis()
         except Exception as e:
             print(e)
             print("Error leyendo el stream:")
-            time.sleep(1)
+            asyncio.sleep(1)
 
 async def answer(json, data):
     try:
@@ -112,7 +114,10 @@ def loadWords():
         substrings = [line.strip() for line in file if line.strip()]
     return
 
+async def main():
+    await listen()
+
 if __name__ == "__main__":
     loadWords()
-    asyncio.run(listen())
+    asyncio.run(main())
 

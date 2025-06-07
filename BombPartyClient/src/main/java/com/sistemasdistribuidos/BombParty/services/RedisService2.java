@@ -61,7 +61,7 @@ public class RedisService2 {
                 try {
                     List<MapRecord<String, Object, Object>> messages = redisTemplate
                         .opsForStream()
-                        .read(StreamReadOptions.empty().block(Duration.ofSeconds(5)),
+                        .read(StreamReadOptions.empty().block(Duration.ofSeconds(10)),
                               StreamOffset.create(streamKey, offset));
                     if (messages != null) {
                         for (MapRecord<String, Object, Object> msg : messages) {
@@ -183,7 +183,6 @@ public class RedisService2 {
                 "word", word,
                 "from", POD_NAME
             );
-
             CompletableFuture<String> future = sendRequest(correlationId, payloadMap);
             String responseStr = future.get(10, TimeUnit.SECONDS);
 
