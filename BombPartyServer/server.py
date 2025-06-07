@@ -100,7 +100,7 @@ async def listen():
                             game.players[name] = "muerto"
                             sizePlayers = len(game.listaNombres)
                             if (sizePlayers == len(game.disconnectionList)):
-                                gameList.pop(game, None)
+                                gameList.pop(game.roomId, None)
                             else:
                                 if (game.currentPlayer == name):
                                     await nextPlayer(game)
