@@ -30,7 +30,7 @@ Para poder desplegar el proyecto se deberá ejecutar el siguiente comando: **kub
 ![Pods](images/get_pods.png)
 
 Una vez levantados los pods, existen dos opciones para ingresar a la aplicación:
-- Utilizar port-forward: Primero, debemos colocar el comando **kubectl get pods** para obtener el nombre exacto del pod del cliente. Podremos diferenciarlo ya que su nombre comienza con "bombpartyclient-deployment". Luego, debemos usar el comando **kubectl port-forward {nombre del pod} 80:8080**. Llegados a este punto, ya podremos ingresar a la aplicación ingresando en el navegador a la url **localhost:80**.
+- Utilizar port-forward: Primero, debemos colocar el comando **kubectl get pods** para obtener el nombre exacto del pod del cliente. Podremos diferenciarlo ya que su nombre comienza con "bombpartyclient-deployment". Luego, debemos usar el comando **kubectl port-forward {nombre del pod} 80:8080**. Llegados a este punto, ya podremos ingresar a la aplicación ingresando en el navegador la url **localhost:80**.
 - Utilizando un load balancer: Si se tiene la posibilidad, se puede solicitar un load balancer que exponga el puerto 80 y redirija el tráfico al servicio con selector **app: bombpartyclient-app**, con puerto destino 8080. Para esto, se cuenta con el .yaml con el nombre de **lb.yaml**. Al quedar este paso listo, se puede acceder a la aplicación colocando en el navegador la ip asignada al load balancer.
 
 ### Dentro del juego
