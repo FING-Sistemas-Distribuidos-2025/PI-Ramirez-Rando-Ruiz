@@ -43,7 +43,7 @@ Al ingresar, debemos escribir nuestro nombre en el campo de texto y apretar el b
 Luego, si no existe una partida creada, podremos crear nuestra partida haciendo click en el botón "Crear Sala". Esto nos llevará a una nueva vista, donde nos interesará el texto "ID de la sala:". Este id es el que será utilizado por otros para ingresar a la partida.
 
 <div align="center">
-  <img src="./images/createRoom.gif.gif" width="640" alt="Crear sala" />
+  <img src="./images/createRoom.gif" width="640" alt="Crear sala" />
 </div>
 
 En el caso de que la sala ya se encuentre creada, tenemos la opción de ingresar a ella. Para eso, necesitaremos el id de la sala. En la pantalla donde se encontraba la opción "Crear sala" debemos ingresar el id en el campo de texto y a continuación seleccionar la opción "Unirse".
